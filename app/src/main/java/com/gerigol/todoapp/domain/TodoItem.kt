@@ -4,7 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity
+@Entity(tableName = "todos")
 data class TodoItem(
     @ColumnInfo(name = "id")
     @PrimaryKey(autoGenerate = true)
