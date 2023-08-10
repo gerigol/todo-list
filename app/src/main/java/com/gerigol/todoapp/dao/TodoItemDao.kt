@@ -1,4 +1,4 @@
-package com.gerigol.todoapp
+package com.gerigol.todoapp.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
