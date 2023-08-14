@@ -5,7 +5,6 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.TextUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -14,6 +13,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.Toolbar
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -23,9 +25,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.gerigol.todoapp.adapter.TodoAdapter
 import com.gerigol.todoapp.db.TodoAppDB
 import com.gerigol.todoapp.domain.TodoItem
+import com.gerigol.todoapp.repository.TodoRepository
+import com.gerigol.todoapp.viewmodel.TodoViewModel
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -33,9 +36,11 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity() {
 
     private lateinit var todoAdapter: TodoAdapter
-    private val todos: ArrayList<TodoItem> = ArrayList()
+    private val todos: MutableList<TodoItem> = ArrayList()
     private lateinit var recyclerView: RecyclerView
     private lateinit var todoAppDB: TodoAppDB
+    private lateinit var viewModel: TodoViewModel
+    private lateinit var repository: TodoRepository
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -53,8 +58,14 @@ class MainActivity : AppCompatActivity() {
             .addCallback(myCallBack)
             .build()
 
+        repository = TodoRepository(todoAppDB.todoItemDao())
 
-        GlobalScope.launch(Dispatchers.IO) {
+        viewModel = ViewModelProvider(
+            this,
+            TodoViewModelFactory(repository)
+        )[TodoViewModel::class.java]
+
+        lifecycleScope.launch(Dispatchers.IO) {
             displayAllTodoInBackground()
         }
 
@@ -66,19 +77,32 @@ class MainActivity : AppCompatActivity() {
 
         val fab: FloatingActionButton = findViewById(R.id.fab)
         fab.setOnClickListener {
-            GlobalScope.launch(Dispatchers.IO){
-                addTodo()
+            lifecycleScope.launch(Dispatchers.IO) {
+                showTodoDialog()
+            }
+        }
+
+        viewModel.todos.observe(this) { todos ->
+            todos?.let {
+                todoAdapter.updateData(it)
             }
         }
 
     }
 
+    class TodoViewModelFactory(private val repository: TodoRepository) : ViewModelProvider.Factory {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(TodoViewModel::class.java)) {
+                @Suppress("UNCHECKED_CAST")
+                return TodoViewModel(repository) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
+    }
+
     private val myCallBack = object : RoomDatabase.Callback() {
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
-            GlobalScope.launch(Dispatchers.IO){
-                displayAllTodoInBackground()
-            }
             Log.i("TAG", "Database has been Created")
         }
 
@@ -89,44 +113,50 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetTextI18n")
-    fun addTodo() {
-        val layoutInflater = LayoutInflater.from(applicationContext)
-        val view: View = layoutInflater.inflate(R.layout.add_todo_item, null)
-
-        val alertDialogBuilder = AlertDialog.Builder(this)
-        alertDialogBuilder.setView(view)
-
-        val todoTag: TextView = view.findViewById(R.id.new_todo_title)
-        val todoTitle: EditText = view.findViewById(R.id.title)
-        val todoDescription: EditText = view.findViewById(R.id.description)
-
-        todoTag.text = getString(R.string.add_new_todo)
-
-        alertDialogBuilder.setCancelable(false)
-            .setPositiveButton("Save") { dialogInterface, _ ->
-                if (TextUtils.isEmpty(todoTitle.text.toString())) {
-                    Toast.makeText(this, getString(R.string.enter_title), Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                } else {
-                    dialogInterface.dismiss()
-                }
-
-                runOnUiThread {
-                   createTodo(todoTitle.text.toString(), todoDescription.text.toString())
-                }
-            }
-            .setNegativeButton("Cancel") { dialogInterface, _ ->
-                dialogInterface.cancel()
-            }
-
+    fun showTodoDialog() {
         runOnUiThread {
+            val layoutInflater = LayoutInflater.from(applicationContext)
+            val view: View = layoutInflater.inflate(R.layout.add_todo_item, null)
+
+            val todoTextView: TextView = view.findViewById(R.id.new_todo_title)
+            val todoTitle: EditText = view.findViewById(R.id.title)
+            val todoDescription: EditText = view.findViewById(R.id.description)
+
+            todoTextView.text = getString(R.string.add_new_todo)
+
+            val alertDialogBuilder = AlertDialog.Builder(this)
+                .setView(view)
+                .setCancelable(false)
+                .setPositiveButton("Save") { dialogInterface, _ ->
+                    if (todoTitle.text.isNotEmpty()) {
+                        addTodoToDatabase(
+                            todoTitle.text.toString(),
+                            todoDescription.text.toString()
+                        )
+                    } else {
+                        Toast.makeText(
+                            this,
+                            getString(R.string.enter_title),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+                .setNegativeButton("Cancel") { dialogInterface, _ ->
+                    dialogInterface.cancel()
+                }
+
             val alertDialog: AlertDialog = alertDialogBuilder.create()
             alertDialog.show()
         }
     }
 
+    private fun addTodoToDatabase(title: String, description: String) {
+        viewModel.addTodo(title, description)
+
+    }
+
     fun editTodo(todo: TodoItem) {
-        //TODO: implement it
+        //TODO: implement edit Todo
     }
 
     private fun deleteTodo(todo: TodoItem, position: Int) {
@@ -144,22 +174,6 @@ class MainActivity : AppCompatActivity() {
         todoAppDB.todoItemDao().updateTodoItem(todo)
         todos[position] = todo
         todoAdapter.notifyDataSetChanged()
-    }
-
-    private fun createTodo(title: String, description: String) {
-        GlobalScope.launch(Dispatchers.IO) {
-            val id = todoAppDB.todoItemDao()
-                .addTodoItem(TodoItem(title, description))
-
-            val todo = todoAppDB.todoItemDao().getTodoItem(id)
-
-            todo?.let {
-                GlobalScope.launch(Dispatchers.Main) {
-                    todos.add(0, it)
-                    todoAdapter.notifyDataSetChanged()
-                }
-            }
-        }
     }
 
 

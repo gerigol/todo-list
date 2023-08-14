@@ -10,7 +10,7 @@ import com.gerigol.todoapp.MainActivity
 import com.gerigol.todoapp.R
 import com.gerigol.todoapp.domain.TodoItem
 
-class TodoAdapter(private val mainActivity: MainActivity ,private val todos: List<TodoItem>): RecyclerView.Adapter<TodoAdapter.TodoViewHolder>() {
+class TodoAdapter(private val mainActivity: MainActivity ,private val todos: MutableList<TodoItem>): RecyclerView.Adapter<TodoAdapter.TodoViewHolder>() {
 
 
     class TodoViewHolder(itemView: View): ViewHolder(itemView)
@@ -33,9 +33,15 @@ class TodoAdapter(private val mainActivity: MainActivity ,private val todos: Lis
         holder.itemView.findViewById<TextView>(R.id.tvTodoTitle).setText(currentTodo.title)
         holder.itemView.findViewById<TextView>(R.id.tvTodoDescription).setText(currentTodo.description)
 
-        holder.itemView.setOnClickListener(View.OnClickListener {
+        holder.itemView.setOnClickListener {
             mainActivity.editTodo(currentTodo)
-        })
+        }
+    }
+
+    fun updateData(newTodos: List<TodoItem>) {
+        todos.clear()
+        todos.addAll(newTodos)
+        notifyDataSetChanged()
     }
 
 }
