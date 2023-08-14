@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">TodoApp</string>
+    <string name="add_todo_item">Add Todo Item</string>
+    <string name="my_todos">"My Todos: "</string>
+    <string name="add_new_todo">Add New Todo</string>
+    <string name="enter_title">Please Enter a title</string>
 </resources>
