@@ -34,7 +34,7 @@ class TodoAdapter(private val mainActivity: MainActivity ,private val todos: Mut
         holder.itemView.findViewById<TextView>(R.id.tvTodoDescription).setText(currentTodo.description)
 
         holder.itemView.setOnClickListener {
-            mainActivity.editTodo(currentTodo)
+            mainActivity.showTodoDialog(currentTodo)
         }
     }
 

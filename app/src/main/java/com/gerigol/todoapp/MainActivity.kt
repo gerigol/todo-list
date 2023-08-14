@@ -3,8 +3,6 @@ package com.gerigol.todoapp
 import android.annotation.SuppressLint
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -30,8 +28,7 @@ import com.gerigol.todoapp.viewmodel.TodoViewModel
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -44,12 +41,31 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        setupViews()
+        setupViewModel()
+        setupObservers()
+        loadTodos()
+    }
 
+    private fun setupViews() {
         val toolbar: Toolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
         supportActionBar?.title = getString(R.string.my_todos)
 
         recyclerView = findViewById(R.id.rvTodoList)
+        recyclerView.layoutManager = LinearLayoutManager(applicationContext)
+        recyclerView.itemAnimator = DefaultItemAnimator()
+
+        todoAdapter = TodoAdapter(this, todos)
+        recyclerView.adapter = todoAdapter
+
+        val fab: FloatingActionButton = findViewById(R.id.fab)
+        fab.setOnClickListener {
+            showTodoDialog()
+        }
+    }
+
+    private fun setupViewModel() {
         todoAppDB = Room.databaseBuilder(
             applicationContext,
             TodoAppDB::class.java,
@@ -59,35 +75,27 @@ class MainActivity : AppCompatActivity() {
             .build()
 
         repository = TodoRepository(todoAppDB.todoItemDao())
-
         viewModel = ViewModelProvider(
             this,
             TodoViewModelFactory(repository)
         )[TodoViewModel::class.java]
+    }
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            displayAllTodoInBackground()
-        }
-
-        todoAdapter = TodoAdapter(this, todos)
-        val layoutManager: RecyclerView.LayoutManager = LinearLayoutManager(applicationContext)
-        recyclerView.layoutManager = layoutManager
-        recyclerView.itemAnimator = DefaultItemAnimator()
-        recyclerView.adapter = todoAdapter
-
-        val fab: FloatingActionButton = findViewById(R.id.fab)
-        fab.setOnClickListener {
-            lifecycleScope.launch(Dispatchers.IO) {
-                showTodoDialog()
-            }
-        }
-
+    private fun setupObservers() {
         viewModel.todos.observe(this) { todos ->
             todos?.let {
                 todoAdapter.updateData(it)
             }
         }
+    }
 
+    private fun loadTodos() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            todos.addAll(todoAppDB.todoItemDao().getTodoItems())
+            withContext(Dispatchers.Main) {
+                todoAdapter.notifyDataSetChanged()
+            }
+        }
     }
 
     class TodoViewModelFactory(private val repository: TodoRepository) : ViewModelProvider.Factory {
@@ -111,83 +119,69 @@ class MainActivity : AppCompatActivity() {
             Log.i("TAG", "Database has been Opened")
         }
     }
+    private var editingTodo: TodoItem? = null
 
     @SuppressLint("SetTextI18n")
-    fun showTodoDialog() {
+    fun showTodoDialog(todoItem: TodoItem? = null) {
         runOnUiThread {
-            val layoutInflater = LayoutInflater.from(applicationContext)
-            val view: View = layoutInflater.inflate(R.layout.add_todo_item, null)
-
-            val todoTextView: TextView = view.findViewById(R.id.new_todo_title)
-            val todoTitle: EditText = view.findViewById(R.id.title)
-            val todoDescription: EditText = view.findViewById(R.id.description)
-
-            todoTextView.text = getString(R.string.add_new_todo)
-
+            val dialogView = createTodoDialogView(todoItem)
             val alertDialogBuilder = AlertDialog.Builder(this)
-                .setView(view)
+                .setView(dialogView)
                 .setCancelable(false)
                 .setPositiveButton("Save") { dialogInterface, _ ->
-                    if (todoTitle.text.isNotEmpty()) {
-                        addTodoToDatabase(
-                            todoTitle.text.toString(),
-                            todoDescription.text.toString()
-                        )
-                    } else {
-                        Toast.makeText(
-                            this,
-                            getString(R.string.enter_title),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    handleSaveButtonClick(dialogView)
                 }
                 .setNegativeButton("Cancel") { dialogInterface, _ ->
                     dialogInterface.cancel()
                 }
-
             val alertDialog: AlertDialog = alertDialogBuilder.create()
             alertDialog.show()
         }
     }
 
-    private fun addTodoToDatabase(title: String, description: String) {
-        viewModel.addTodo(title, description)
+    private fun createTodoDialogView(todoItem: TodoItem?): View {
+        val layoutInflater = LayoutInflater.from(applicationContext)
+        val view: View = layoutInflater.inflate(R.layout.add_todo_item, null)
+        val todoTextView: TextView = view.findViewById(R.id.new_todo_title)
+        val todoTitle: EditText = view.findViewById(R.id.title)
+        val todoDescription: EditText = view.findViewById(R.id.description)
+        val nameTitle: String = todoItem?.let {
+            todoTitle.setText(it.title)
+            todoDescription.setText(it.description)
+            editingTodo = it
+            "Edit Todo"
+        } ?: "Add new todo"
+        todoTextView.text = nameTitle
 
+        return view
     }
 
-    fun editTodo(todo: TodoItem) {
-        //TODO: implement edit Todo
-    }
+    private fun handleSaveButtonClick(dialogView: View) {
+        val todoTitle: EditText = dialogView.findViewById(R.id.title)
+        val todoDescription: EditText = dialogView.findViewById(R.id.description)
 
-    private fun deleteTodo(todo: TodoItem, position: Int) {
-        todos.removeAt(position)
-        todoAppDB.todoItemDao().deleteTodoItem(todo)
-        todoAdapter.notifyDataSetChanged()
-    }
-
-    private fun updateTodo(title: String, description: String, position: Int) {
-        val todo = todos[position]
-
-        todo.title = title
-        todo.description = description
-
-        todoAppDB.todoItemDao().updateTodoItem(todo)
-        todos[position] = todo
-        todoAdapter.notifyDataSetChanged()
-    }
-
-
-    private fun displayAllTodoInBackground() {
-        val executor: ExecutorService = Executors.newSingleThreadExecutor()
-        val handler = Handler(Looper.getMainLooper())
-
-        executor.execute {
-            todos.addAll(todoAppDB.todoItemDao().getTodoItems())
-
-            handler.post {
-                todoAdapter.notifyDataSetChanged()
+        if (todoTitle.text.isNotEmpty()) {
+            if (editingTodo != null) {
+                updateTodoInDatabase(editingTodo!!, todoTitle.text.toString(), todoDescription.text.toString())
+            } else {
+                addTodoToDatabase(todoTitle.text.toString(), todoDescription.text.toString())
             }
+        } else {
+            showToast(getString(R.string.enter_title))
         }
     }
 
+    private fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+    private fun updateTodoInDatabase(todoItem: TodoItem, title: String, description: String) {
+        viewModel.updateTodo(todoItem, title, description)
+    }
+    private fun addTodoToDatabase(title: String, description: String) {
+        viewModel.addTodo(title, description)
+    }
+
+    private fun deleteTodo(todo: TodoItem, position: Int) {
+        //TODO: Implement delete operation
+    }
 }
