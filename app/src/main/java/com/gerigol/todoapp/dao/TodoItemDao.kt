@@ -1,5 +1,6 @@
 package com.gerigol.todoapp.dao
 
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -27,4 +28,6 @@ interface TodoItemDao {
     @Query("select * from todos where id ==:TodoItemId")
     fun getTodoItem(TodoItemId: Long): TodoItem?
 
+    @Query("SELECT * FROM todos")
+    fun getTodoItemsLiveData(): LiveData<List<TodoItem>>
 }
