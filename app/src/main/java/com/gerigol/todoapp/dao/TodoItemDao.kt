@@ -22,7 +22,7 @@ interface TodoItemDao {
 
 
     @Query("select * from todos")
-    fun getTodoItems(): List<TodoItem?>?
+    fun getTodoItems(): List<TodoItem>
 
     @Query("select * from todos where id ==:TodoItemId")
     fun getTodoItem(TodoItemId: Long): TodoItem?
