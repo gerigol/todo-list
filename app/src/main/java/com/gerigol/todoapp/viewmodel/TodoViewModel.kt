@@ -16,4 +16,10 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
             repository.addTodoItem(TodoItem(title, description))
         }
     }
+
+    fun updateTodo(todoItem: TodoItem, title: String, description: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateTodoItem(todoItem.copy(title = title, description = description))
+        }
+    }
 }
