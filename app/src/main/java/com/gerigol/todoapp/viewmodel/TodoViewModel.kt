@@ -22,4 +22,16 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
             repository.updateTodoItem(todoItem.copy(title = title, description = description))
         }
     }
+
+    fun updateTodo(todoItem: TodoItem, isChecked: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateTodoItem(todoItem.copy(isChecked = isChecked))
+        }
+    }
+
+    fun deleteDoneTodos() {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteDoneTodos()
+        }
+    }
 }

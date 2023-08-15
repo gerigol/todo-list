@@ -1,8 +1,10 @@
 package com.gerigol.todoapp.adapter
 
+import android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
@@ -10,18 +12,22 @@ import com.gerigol.todoapp.MainActivity
 import com.gerigol.todoapp.R
 import com.gerigol.todoapp.domain.TodoItem
 
-class TodoAdapter(private val mainActivity: MainActivity ,private val todos: MutableList<TodoItem>): RecyclerView.Adapter<TodoAdapter.TodoViewHolder>() {
+class TodoAdapter(
+    private val mainActivity: MainActivity,
+    private val todos: MutableList<TodoItem>
+) : RecyclerView.Adapter<TodoAdapter.TodoViewHolder>() {
 
-
-    class TodoViewHolder(itemView: View): ViewHolder(itemView)
+    class TodoViewHolder(itemView: View) : ViewHolder(itemView)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TodoViewHolder {
-        return TodoViewHolder(LayoutInflater.from(parent.context)
-            .inflate(
-                R.layout.todo_item,
-                parent,
-                false
-            ))
+        return TodoViewHolder(
+            LayoutInflater.from(parent.context)
+                .inflate(
+                    R.layout.todo_item,
+                    parent,
+                    false
+                )
+        )
     }
 
     override fun getItemCount(): Int {
@@ -30,11 +36,32 @@ class TodoAdapter(private val mainActivity: MainActivity ,private val todos: Mut
 
     override fun onBindViewHolder(holder: TodoViewHolder, position: Int) {
         val currentTodo: TodoItem = todos[position]
-        holder.itemView.findViewById<TextView>(R.id.tvTodoTitle).setText(currentTodo.title)
-        holder.itemView.findViewById<TextView>(R.id.tvTodoDescription).setText(currentTodo.description)
+        val checkBox: CheckBox = holder.itemView.findViewById(R.id.cbDone)
+        val tvTodoTitle = holder.itemView.findViewById<TextView>(R.id.tvTodoTitle)
+        val tvTodoDescription = holder.itemView.findViewById<TextView>(R.id.tvTodoDescription)
 
+        tvTodoTitle.setText(currentTodo.title)
+        tvTodoDescription.setText(currentTodo.description)
+        checkBox.isChecked = currentTodo.isChecked
+
+        checkBox.setOnClickListener {
+            currentTodo.isChecked = checkBox.isChecked
+            toggleStrikeThrough(currentTodo.isChecked, tvTodoTitle, tvTodoDescription)
+            mainActivity.updateTodoInDatabase(currentTodo, currentTodo.isChecked)
+        }
         holder.itemView.setOnClickListener {
             mainActivity.showTodoDialog(currentTodo)
+        }
+    }
+
+    private fun toggleStrikeThrough(isChecked: Boolean, title: TextView, descreption: TextView) {
+        if (isChecked) {
+            title.paintFlags = title.paintFlags or STRIKE_THRU_TEXT_FLAG
+            descreption.paintFlags = descreption.paintFlags or STRIKE_THRU_TEXT_FLAG
+        } else {
+            title.paintFlags = title.paintFlags and STRIKE_THRU_TEXT_FLAG.inv()
+            descreption.paintFlags = descreption.paintFlags and STRIKE_THRU_TEXT_FLAG.inv()
+
         }
     }
 
@@ -43,5 +70,4 @@ class TodoAdapter(private val mainActivity: MainActivity ,private val todos: Mut
         todos.addAll(newTodos)
         notifyDataSetChanged()
     }
-
 }

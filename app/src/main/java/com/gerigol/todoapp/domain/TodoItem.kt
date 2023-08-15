@@ -13,7 +13,7 @@ data class TodoItem(
     var description: String,
 
     @ColumnInfo("is_checked")
-    val isChecked: Boolean = false,
+    var isChecked: Boolean = false,
 
     @ColumnInfo(name = "id")
     @PrimaryKey(autoGenerate = true)
