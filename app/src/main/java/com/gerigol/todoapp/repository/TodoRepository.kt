@@ -25,4 +25,8 @@ class TodoRepository(private val todoItemDao: TodoItemDao) {
     fun getAllTodoItemsLiveData(): LiveData<List<TodoItem>> {
         return todoItemDao.getTodoItemsLiveData()
     }
+
+    fun deleteDoneTodos() {
+        todoItemDao.deleteDoneTodos()
+    }
 }
