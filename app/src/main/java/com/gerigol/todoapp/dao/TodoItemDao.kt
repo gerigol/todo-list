@@ -21,6 +21,8 @@ interface TodoItemDao {
     @Delete
     fun deleteTodoItem(TodoItem: TodoItem?)
 
+    @Query("DELETE FROM todos WHERE is_checked = 1")
+    fun deleteDoneTodos()
 
     @Query("select * from todos")
     fun getTodoItems(): List<TodoItem>
