@@ -59,9 +59,31 @@ class MainActivity : AppCompatActivity() {
         todoAdapter = TodoAdapter(this, todos)
         recyclerView.adapter = todoAdapter
 
-        val fab: FloatingActionButton = findViewById(R.id.fab)
-        fab.setOnClickListener {
+        val fabAdd: FloatingActionButton = findViewById(R.id.fab_add)
+        fabAdd.setOnClickListener {
             showTodoDialog()
+        }
+
+        val fabDeleteDone: FloatingActionButton = findViewById(R.id.fab_delete_done)
+        fabDeleteDone.setOnClickListener {
+            showDeleteConfirmDialog()
+        }
+    }
+
+    private fun showDeleteConfirmDialog() {
+        runOnUiThread {
+            val alertDialogBuilder = AlertDialog.Builder(this)
+                .setTitle("Delete Done Todos")
+                .setMessage("Do you want to delete all done todos?")
+                .setCancelable(false)
+                .setPositiveButton("Yes") { dialog, which ->
+                        viewModel.deleteDoneTodos()
+                }
+                .setNegativeButton("No") { dialog, which ->
+                    dialog.dismiss()
+                }
+            val alertDialog: AlertDialog = alertDialogBuilder.create()
+            alertDialog.show()
         }
     }
 
@@ -121,6 +143,7 @@ class MainActivity : AppCompatActivity() {
     }
     private var editingTodo: TodoItem? = null
 
+
     @SuppressLint("SetTextI18n")
     fun showTodoDialog(todoItem: TodoItem? = null) {
         runOnUiThread {
@@ -162,7 +185,11 @@ class MainActivity : AppCompatActivity() {
 
         if (todoTitle.text.isNotEmpty()) {
             if (editingTodo != null) {
-                updateTodoInDatabase(editingTodo!!, todoTitle.text.toString(), todoDescription.text.toString())
+                updateTodoInDatabase(
+                    editingTodo!!,
+                    todoTitle.text.toString(),
+                    todoDescription.text.toString()
+                )
             } else {
                 addTodoToDatabase(todoTitle.text.toString(), todoDescription.text.toString())
             }
@@ -174,14 +201,16 @@ class MainActivity : AppCompatActivity() {
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
+
     private fun updateTodoInDatabase(todoItem: TodoItem, title: String, description: String) {
         viewModel.updateTodo(todoItem, title, description)
     }
-    private fun addTodoToDatabase(title: String, description: String) {
-        viewModel.addTodo(title, description)
+
+    fun updateTodoInDatabase(todoItem: TodoItem, isChecked: Boolean) {
+        viewModel.updateTodo(todoItem, isChecked)
     }
 
-    private fun deleteTodo(todo: TodoItem, position: Int) {
-        //TODO: Implement delete operation
+    private fun addTodoToDatabase(title: String, description: String) {
+        viewModel.addTodo(title, description)
     }
 }
