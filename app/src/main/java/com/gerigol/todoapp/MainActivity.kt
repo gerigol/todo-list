@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
@@ -59,12 +60,12 @@ class MainActivity : AppCompatActivity() {
         todoAdapter = TodoAdapter(this, todos)
         recyclerView.adapter = todoAdapter
 
-        val fabAdd: FloatingActionButton = findViewById(R.id.fab_add)
+        val fabAdd: Button = findViewById(R.id.fab_add)
         fabAdd.setOnClickListener {
             showTodoDialog()
         }
 
-        val fabDeleteDone: FloatingActionButton = findViewById(R.id.fab_delete_done)
+        val fabDeleteDone: Button = findViewById(R.id.fab_delete_done)
         fabDeleteDone.setOnClickListener {
             showDeleteConfirmDialog()
         }
