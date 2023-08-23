@@ -35,6 +35,10 @@ class TodoAdapter(
     }
 
     override fun onBindViewHolder(holder: TodoViewHolder, position: Int) {
+
+        //TODO: Remove all the all the references to  Views and Widges
+        //TODO: Use Data Binding
+
         val currentTodo: TodoItem = todos[position]
         val checkBox: CheckBox = holder.itemView.findViewById(R.id.cbDone)
         val tvTodoTitle = holder.itemView.findViewById<TextView>(R.id.tvTodoTitle)
@@ -43,6 +47,8 @@ class TodoAdapter(
         tvTodoTitle.setText(currentTodo.title)
         tvTodoDescription.setText(currentTodo.description)
         checkBox.isChecked = currentTodo.isChecked
+
+        toggleStrikeThrough(currentTodo.isChecked, tvTodoTitle, tvTodoDescription)
 
         checkBox.setOnClickListener {
             currentTodo.isChecked = checkBox.isChecked
@@ -54,13 +60,13 @@ class TodoAdapter(
         }
     }
 
-    private fun toggleStrikeThrough(isChecked: Boolean, title: TextView, descreption: TextView) {
+    private fun toggleStrikeThrough(isChecked: Boolean, title: TextView, description: TextView) {
         if (isChecked) {
             title.paintFlags = title.paintFlags or STRIKE_THRU_TEXT_FLAG
-            descreption.paintFlags = descreption.paintFlags or STRIKE_THRU_TEXT_FLAG
+            description.paintFlags = description.paintFlags or STRIKE_THRU_TEXT_FLAG
         } else {
             title.paintFlags = title.paintFlags and STRIKE_THRU_TEXT_FLAG.inv()
-            descreption.paintFlags = descreption.paintFlags and STRIKE_THRU_TEXT_FLAG.inv()
+            description.paintFlags = description.paintFlags and STRIKE_THRU_TEXT_FLAG.inv()
 
         }
     }
