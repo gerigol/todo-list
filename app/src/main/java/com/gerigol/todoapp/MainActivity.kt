@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
@@ -13,7 +14,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.Toolbar
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -25,10 +25,6 @@ import com.gerigol.todoapp.db.TodoAppDB
 import com.gerigol.todoapp.domain.TodoItem
 import com.gerigol.todoapp.repository.TodoRepository
 import com.gerigol.todoapp.viewmodel.TodoViewModel
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -38,13 +34,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var todoAppDB: TodoAppDB
     private lateinit var viewModel: TodoViewModel
     private lateinit var repository: TodoRepository
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setupViews()
         setupViewModel()
-        setupObservers()
+//        setupObservers()
         loadTodos()
+
+
+
     }
 
     private fun setupViews() {
@@ -59,33 +60,18 @@ class MainActivity : AppCompatActivity() {
         todoAdapter = TodoAdapter(this, todos)
         recyclerView.adapter = todoAdapter
 
-        val fabAdd: FloatingActionButton = findViewById(R.id.fab_add)
+        val fabAdd: Button = findViewById(R.id.fab_add)
         fabAdd.setOnClickListener {
             showTodoDialog()
         }
 
-        val fabDeleteDone: FloatingActionButton = findViewById(R.id.fab_delete_done)
+        val fabDeleteDone: Button = findViewById(R.id.fab_delete_done)
         fabDeleteDone.setOnClickListener {
             showDeleteConfirmDialog()
         }
     }
 
-    private fun showDeleteConfirmDialog() {
-        runOnUiThread {
-            val alertDialogBuilder = AlertDialog.Builder(this)
-                .setTitle("Delete Done Todos")
-                .setMessage("Do you want to delete all done todos?")
-                .setCancelable(false)
-                .setPositiveButton("Yes") { dialog, which ->
-                        viewModel.deleteDoneTodos()
-                }
-                .setNegativeButton("No") { dialog, which ->
-                    dialog.dismiss()
-                }
-            val alertDialog: AlertDialog = alertDialogBuilder.create()
-            alertDialog.show()
-        }
-    }
+
 
     private fun setupViewModel() {
         todoAppDB = Room.databaseBuilder(
@@ -103,20 +89,13 @@ class MainActivity : AppCompatActivity() {
         )[TodoViewModel::class.java]
     }
 
-    private fun setupObservers() {
-        viewModel.todos.observe(this) { todos ->
-            todos?.let {
-                todoAdapter.updateData(it)
-            }
-        }
-    }
 
     private fun loadTodos() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            todos.addAll(todoAppDB.todoItemDao().getTodoItems())
-            withContext(Dispatchers.Main) {
-                todoAdapter.notifyDataSetChanged()
-            }
+
+        viewModel.todos.observe(
+            this
+        ) { todos ->
+            todos?.let { todoAdapter.updateData(it) }
         }
     }
 
@@ -146,20 +125,34 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetTextI18n")
     fun showTodoDialog(todoItem: TodoItem? = null) {
-        runOnUiThread {
-            val dialogView = createTodoDialogView(todoItem)
+        val dialogView = createTodoDialogView(todoItem)
+        val alertDialogBuilder = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(false)
+            .setPositiveButton("Save") { dialogInterface, _ ->
+                handleSaveButtonClick(dialogView)
+            }
+            .setNegativeButton("Cancel") { dialogInterface, _ ->
+                dialogInterface.cancel()
+            }
+        val alertDialog: AlertDialog = alertDialogBuilder.create()
+        alertDialog.show()
+    }
+
+    private fun showDeleteConfirmDialog() {
+
             val alertDialogBuilder = AlertDialog.Builder(this)
-                .setView(dialogView)
+                .setTitle("Delete Done Todos")
+                .setMessage("Do you want to delete all done todos?")
                 .setCancelable(false)
-                .setPositiveButton("Save") { dialogInterface, _ ->
-                    handleSaveButtonClick(dialogView)
+                .setPositiveButton("Yes") { dialog, which ->
+                    viewModel.deleteDoneTodos()
                 }
-                .setNegativeButton("Cancel") { dialogInterface, _ ->
-                    dialogInterface.cancel()
+                .setNegativeButton("No") { dialog, which ->
+                    dialog.dismiss()
                 }
             val alertDialog: AlertDialog = alertDialogBuilder.create()
             alertDialog.show()
-        }
     }
 
     private fun createTodoDialogView(todoItem: TodoItem?): View {
