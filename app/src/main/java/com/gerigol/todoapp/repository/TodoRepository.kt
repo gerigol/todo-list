@@ -6,11 +6,7 @@ import com.gerigol.todoapp.domain.TodoItem
 
 class TodoRepository(private val todoItemDao: TodoItemDao) {
 
-    fun getAllTodoItems(): List<TodoItem> {
-        return todoItemDao.getTodoItems()
-    }
-
-    fun addTodoItem(todoItem: TodoItem) {
+       fun addTodoItem(todoItem: TodoItem) {
         todoItemDao.addTodoItem(todoItem)
     }
 
