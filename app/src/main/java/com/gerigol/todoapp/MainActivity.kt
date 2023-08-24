@@ -11,7 +11,6 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.widget.Toolbar
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -27,21 +26,17 @@ import com.gerigol.todoapp.db.TodoAppDB
 import com.gerigol.todoapp.domain.TodoItem
 import com.gerigol.todoapp.repository.TodoRepository
 import com.gerigol.todoapp.viewmodel.TodoViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
-
-    //For Commit!!!!
+    private lateinit var todoAppDB: TodoAppDB
+    private val todos: ArrayList<TodoItem> = ArrayList()
+    private lateinit var todoAdapter: TodoAdapter
 
     private lateinit var binding: ActivityMainBinding
-
     private lateinit var viewModel: TodoViewModel
 
-
-        private val todos: MutableList<TodoItem> = ArrayList()
-        private lateinit var todoAdapter: TodoAdapter
-        private lateinit var recyclerView: RecyclerView
-
-    private lateinit var todoAppDB: TodoAppDB
     private lateinit var repository: TodoRepository
 
 
@@ -68,18 +63,18 @@ class MainActivity : AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(applicationContext)
         recyclerView.itemAnimator = DefaultItemAnimator()
 
-        todoAdapter = TodoAdapter(this, todos)
+        todoAdapter = TodoAdapter(todos)
         recyclerView.adapter = todoAdapter
 
-        val fabAdd: Button = binding.fabAdd
-        fabAdd.setOnClickListener {
-            showTodoDialog()
-        }
-
-        val fabDeleteDone: Button = binding.fabDeleteDone
-        fabDeleteDone.setOnClickListener {
-            showDeleteConfirmDialog()
-        }
+//        val fabAdd: Button = binding.fabAdd
+//        fabAdd.setOnClickListener {
+//            showTodoDialog()
+//        }
+//
+//        val fabDeleteDone: Button = binding.fabDeleteDone
+//        fabDeleteDone.setOnClickListener {
+//            showDeleteConfirmDialog()
+//        }
     }
 
 
@@ -89,7 +84,6 @@ class MainActivity : AppCompatActivity() {
             TodoAppDB::class.java,
             "TodoDB"
         )
-            .addCallback(myCallBack)
             .build()
 
         repository = TodoRepository(todoAppDB.todoItemDao())
@@ -101,11 +95,27 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun loadTodos() {
-        viewModel.todos.observe(
-            this
-        ) { todos ->
-            todos?.let { todoAdapter.updateData(it) }
-        }
+
+        //Not a good aproach to mix main and backround threads
+        //TODO: implement loading todos in a safe way
+
+
+
+//        viewModelScope.launch(Dispatchers.IO) {
+//            val loadedTodos = repository.getAllTodos()
+//            withContext(Dispatchers.Main) {
+//                todos.clear()
+//                todos.addAll(loadedTodos)
+//                todoAdapter.setTodos(todos)
+//            }
+//        }
+
+
+//        viewModel.todos.observe(
+//            this
+//        ) { todos ->
+//            todos?.let { todoAdapter.setTodos(it) }
+//        }
     }
 
     class TodoViewModelFactory(private val repository: TodoRepository) : ViewModelProvider.Factory {
@@ -118,17 +128,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val myCallBack = object : RoomDatabase.Callback() {
-        override fun onCreate(db: SupportSQLiteDatabase) {
-            super.onCreate(db)
-            Log.i("TAG", "Database has been Created")
-        }
-
-        override fun onOpen(db: SupportSQLiteDatabase) {
-            super.onOpen(db)
-            Log.i("TAG", "Database has been Opened")
-        }
-    }
     private var editingTodo: TodoItem? = null
 
 
